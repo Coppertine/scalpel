@@ -4,11 +4,15 @@ import glob
 import sys
 import re
 import msvcrt
+import json
 from PIL import Image
 consoleinput = "false"
 #IF THINGS ARE NOT WORKING, UNCOMMENT THE FOLLOWING LINE.
 #consoleinput = "true"
 def filelen(file):
+    """
+    Returns the length of lines in file
+    """
     with open(file) as f:
         for i, l in enumerate(f):
             pass
@@ -23,6 +27,9 @@ def findline(filename, linenum):
 
 
 def smparse(file):
+    """
+    Parses a StepMania level
+    """
     print("finding bpms...")
     with open(file) as openfile:
         for l in openfile:
@@ -30,17 +37,9 @@ def smparse(file):
                 if "#BPMS:" in part:
                     with open("smbpm.temp", "a") as outputfile:
                         outputfile.write(re.sub("[,=]", "\n", part[6:-1]))
-    print("finding audio file...")
-    with open(file) as openfile:
-        for l in openfile:
-            for part in l.split():
                 if "#MUSIC:" in part:
                     with open("smaud.temp", "a") as outputfile:
                         outputfile.write(part[7:-1])
-    print("finding offset...")
-    with open(file) as openfile:
-        for l in openfile:
-            for part in l.split():
                 if "#OFFSET:" in part:
                     with open("smoff.temp", "a") as outputfile:
                         outputfile.write(str(abs(float(part[8:-1]) * 1000)))
@@ -48,6 +47,9 @@ def smparse(file):
 
 
 def cleanup(full):
+    """
+    Cleans out the output file before generating.
+    """
     for item in os.listdir('output/'):
         if item.endswith(".gif"):
             os.remove(os.path.join('output/', item))
@@ -116,6 +118,91 @@ def clear():
         # for mac and linux(here, os.name is 'posix')
     else:
         _ = system('clear')
+
+def grade_calculator():
+    file_input = input("Directory to .rdlevel file")
+    hitcount = read_hitcount(file_input)
+    print("A rank: " + str(round(hitcount*0.1)) + " misses.")
+    print("B rank: " + str(round(hitcount*0.2)) + " misses")
+    print("C rank: " + str(round(hitcount*0.3)) + " misses")
+    print("D rank: " + str(round(hitcount*0.4)) + " misses")
+    waitforkey()
+    clear()
+
+def read_hitcount(file_input):
+    beat_list = []
+    freetime_beat_list = []
+    players = []
+    with open(file_input) as file:
+        rdlevel = json.loads(file)
+        for row in rdlevel.rows:
+            players.append(row)
+        for event in rdlevel.events:
+            if event.type == "ChangePlayersRows":
+                for x in range(0, event.players.count):
+                    players[x].player = event.players[x]
+            if event.type == "AddClassicBeat" or event.type == "AddOneshotBeat":
+                if players[event.row].player != "CPU":
+                    beat_list.append(event)
+            if event.type == "PulseFreeTimeBeat":
+                if event.customPulse == 6:
+                    beat_list.append(event)
+                else:
+                    pass
+            if event.type == "AddFreeTimeBeat":
+                if event.pulse == 6:
+                    beat_list.append(event)
+
+
+
+def effect_repeater_menu():
+    clear()
+    ### bpmeasure = int(input("What is your crotchet length? (default is 8)")) ### Using smart time signatures.
+    ###firstblock = input('What is the first block? (copy and paste from "y":, to },)')
+    firstblock = input('Which row is the first block located?') - 1
+    secondblock = input('Which row is the second block located?)') - 1
+    blockdistance = float(input("What is the distance between these events in beats?"))
+    effectdistance = float(input("What is the distance between the first first block and the second first block?"))
+    startmeasure = int(input("What measure should this effect start?"))
+    startbeat = float(input("What beat should this effect start?"))
+    repeatnumber = int(input("How many times should this effect repeat?"))
+    if path.exists("output/output.txt"):
+        os.remove("output/output.txt")
+    print("Processing...")
+    i = 1
+    barone = startmeasure
+    beatone = startbeat
+    while i < repeatnumber + 1:
+        if beatone >= bpmeasure + 1:
+            while beatone >= bpmeasure + 1:
+                beatone = beatone - bpmeasure
+                barone += 1
+
+        effectone = {
+            "bar": int(barone),
+            "beat": beatone,
+            "y": firstblock
+            }
+        bartwo = barone
+        beattwo = beatone + blockdistance
+        if beattwo >= bpmeasure + 1:
+            beattwo = beattwo - bpmeasure
+            bartwo = bartwo + 1
+        effecttwo = { 
+            "bar": int(bartwo), 
+            "beat": beattwo,
+            'y': secondblock_position
+            }
+        with open("output.txt", "a") as outputfile:
+            outputfile.write(effectone)
+            outputfile.write(json.dump(effecttwo))
+        beatone = beatone + effectdistance
+        i = i + 1
+    print("Done! Open output.txt and copy the contents to the .rdlevel file")
+    waitforkey()
+    clear()
+    
+    
 if input("remove files from last use? (y or n)") == "y":
     cleanup("y")
 print("Welcome to Scalpel. (Super Cool Awesome Level Program: Extra Lines!)")
@@ -130,52 +217,11 @@ while 0 == 0:
     print("8. Exit")
     selection = input("Please enter a number: ")
     if selection == "1":
-        clear()
-        bpmeasure = int(input("What is your crotchet length? (default is 8)"))
-        firstblock = input('What is the first block? (copy and paste from "y":, to },)')
-        secondblock = input('What is the second block? (same format as first)')
-        blockdistance = float(input("What is the distance between these events in beats?"))
-        effectdistance = float(input("What is the distance between the first first block and the second first block?"))
-        startmeasure = int(input("What measure should this effect start?"))
-        startbeat = float(input("What beat should this effect start?"))
-        repeatnumber = int(input("How many times should this effect repeat?"))
-        if path.exists("output/output.txt"):
-            os.remove("output/output.txt")
-        print("Processing...")
-        i = 1
-        barone = startmeasure
-        beatone = startbeat
-        while i < repeatnumber + 1:
-            if beatone >= bpmeasure + 1:
-                while beatone >= bpmeasure + 1:
-                    beatone = beatone - bpmeasure
-                    barone += 1
-
-            effectone = '		{ "bar": ' + str(int(barone)) + ', "beat": ' + str(beatone) + ', ' + firstblock + '\n'
-            bartwo = barone
-            beattwo = beatone + blockdistance
-            if beattwo >= bpmeasure + 1:
-                beattwo = beattwo - bpmeasure
-                bartwo = bartwo + 1
-            effecttwo = '		{ "bar": ' + str(int(bartwo)) + ', "beat": ' + str(beattwo) + ', ' + secondblock + '\n'
-            with open("output.txt", "a") as outputfile:
-                outputfile.write(effectone)
-                outputfile.write(effecttwo)
-            beatone = beatone + effectdistance
-            i = i + 1
-        print("Done! Open output.txt and copy the contents to the .rdlevel file")
-        waitforkey()
-        clear()
+        effect_repeater_menu()
 
     if selection == "2":
         clear()
-        hitcount = int(input("how many times does the player have to hit a button? (do not count cpu rows)"))
-        print("A rank: " + str(round(hitcount*0.1)) + " misses.")
-        print("B rank: " + str(round(hitcount*0.2)) + " misses")
-        print("C rank: " + str(round(hitcount*0.3)) + " misses")
-        print("D rank: " + str(round(hitcount*0.4)) + " misses")
-        waitforkey()
-        clear()
+        grade_calculator()
     if selection == "3":
         gifname = input("Filename of gif?")
         print("Processing gif...")
